@@ -2,7 +2,7 @@
 'use strict';
 
 export default class ModelTransformer{
-constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmnFactory) {
+constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmnFactory,bpmnReplace) {
     var self=this;
     this.cli=cli;
       this.bpmnjs=bpmnjs;
@@ -12,6 +12,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       this.bpmnRenderer = bpmnRenderer;
       this.textRenderer=textRenderer;
       this.bpmnFactory=bpmnFactory;
+      this.bpmnReplace=bpmnReplace;
       //console.log(this.cli.help());
     }
       transformModel(){
@@ -34,7 +35,8 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
 
        var sendTask = this.cli.append(
         gateway,
-        'bpmn:SendTask'
+        'bpmn:SendTask',
+        '150,0'
       );
       var sendTaskshape = this.cli.element(sendTask);
 
@@ -44,49 +46,58 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       }, sendTaskshape,true);
 
       var boundaryShape=this.cli.element(boundary);
-      var timerevent= this.cli.create('bpmn:TimerEventDefinition',{
-        x: boundaryShape.x ,
-        y: boundaryShape.y
-      }, boundaryShape,true);
+      this.bpmnReplace.replaceElement(boundaryShape,{
+        type: "bpmn:BoundaryEvent",
+        eventDefinitionType: "bpmn:TimerEventDefinition"
+    });
       var endEvent1 = this.cli.append(
         sendTask,
-        'bpmn:EndEvent'
+        'bpmn:EndEvent',
+        '150,0'
       );
       var sendTask2 = this.cli.append(
         gateway,
-        'bpmn:SendTask'
+        'bpmn:SendTask',
+        '150,0'
       );
       var endEvent2 = this.cli.append(
         sendTask2,
         'bpmn:EndEvent',
+        '150,0'
       );
       var participantstart=  this.createNewParticipant(participantshape, rootElements);
       var receiveTask = this.cli.append(
         participantstart,
-        'bpmn:ReceiveTask'
+        'bpmn:ReceiveTask',
+        '150,0'
       );
       var endEventmore = this.cli.append(
         receiveTask,
-        'bpmn:EndEvent'
+        'bpmn:EndEvent',
+        '150,0'
       );
       var participantstart2=  this.createNewParticipant(participantshape, rootElements);
       var receiveTask2 = this.cli.append(
         participantstart2,
-        'bpmn:ReceiveTask'
+        'bpmn:ReceiveTask',
+        '150,0'
       );
       var endEventmore2 = this.cli.append(
         receiveTask2,
-        'bpmn:EndEvent'
+        'bpmn:EndEvent',
+        '150,0'
       );
       this.cli.connect(
         sendTask,
         receiveTask,
-        'bpmn:MessageFlow'
+        'bpmn:MessageFlow',
+        '150,0'
       );
       this.cli.connect(
         sendTask2,
         receiveTask2,
-        'bpmn:MessageFlow'
+        'bpmn:MessageFlow',
+        '150,0'
       );
         console.log(participantstart);
         console.log(definitions);
@@ -121,4 +132,4 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     
     
 ModelTransformer.$inject = [ 'bpmnjs','modeling','config',
- 'eventBus', 'bpmnRenderer', 'textRenderer','cli','bpmnFactory'];
+ 'eventBus', 'bpmnRenderer', 'textRenderer','cli','bpmnFactory','bpmnReplace'];
