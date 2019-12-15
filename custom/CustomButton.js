@@ -1,5 +1,4 @@
 
-
 export default class CustomButton {
 
     constructor(eventBus, commandStack, modelTransformer) {
@@ -31,7 +30,7 @@ export default class CustomButton {
         //addButton.addEventListener('click', this.handleAddEvent);
         document.querySelector("#file-input").addEventListener('change', function() {
           // list of selected files
-          /*var all_files = this.files;
+          var all_files = this.files;
           if(all_files.length == 0) {
             alert('Error : No file selected');
             return;
@@ -54,9 +53,12 @@ reader.addEventListener('loadstart', function() {
 // file reading finished successfully
 reader.addEventListener('load', function(e) {
     var text = e.target.result;
+    var parser = new DOMParser();
+    let parseString = require('xml2js').parseString;
+    parseString(text, function (err, result) {
+      modelTransformer.transformModel(result);
 
-    // contents of the file
-    console.log(text);
+    });
 });
 
 // file reading failed
@@ -73,8 +75,7 @@ reader.addEventListener('progress', function(e) {
 });
 
 // read as text file
-reader.readAsText(file);*/
-modelTransformer.transformModel();
+reader.readAsText(file);
         });
     
       }
