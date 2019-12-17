@@ -14,13 +14,10 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       this.bpmnFactory=bpmnFactory;
       this.bpmnReplace=bpmnReplace;
       this.elementRegistry=elementRegistry;
-      this.participantshapeposition=1;
-      this.lastparticipantshape;
-      this.taskpositioncounter=0;
-
       //console.log(this.cli.help());
     }
       transformModel(result){
+
         console.log(result);
         
         var collabo = this.cli.element('StartEvent_1');
@@ -47,25 +44,109 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
         var participantref= startingChoreographyTask.$.initiatingParticipantRef;
         var fittingParticipantName;
         fittingParticipantName = this.getParticipant(participants, participantref);
-        //create the first participant which includes the regular path and error paths
         var participant= this.cli.append(collabo.id, 'bpmn:Participant');   
         var participantshape = this.cli.element(participant);
         this.modeling.updateProperties(participantshape,{id:participantref});    
 
         this.cli.setLabel(participantshape,fittingParticipantName);
-        this.lastparticipantshape=participantshape;
-
         //console.log(participantshape);
         //start of evaluation of situation and standard situation execution subprocess
 
-        this.createEvaluationProcess(collabo, startingChoreographyTask, participantref, participants, participantshape, rootElements, startingSituationalScope, sequenceFlows, subProcesses, fittingParticipantName);
-        
+        this.continueSituation(collabo, startingChoreographyTask, participantref, participants, participantshape, rootElements, startingSituationalScope, sequenceFlows, subProcesses, fittingParticipantName);
+        /*
+        var participant= this.cli.append('StartEvent_1', 'bpmn:Participant');   
+        var participantshape = this.cli.element(participant);
+        var definitions=participantshape.parent.businessObject.$parent;
+        var rootElements = definitions.rootElements || [];
+        var gateway = this.cli.append(
+          'StartEvent_1',
+          'bpmn:ExclusiveGateway',
+          '150,0'
+        );
+       // console.log(participantshape.parent);     
+
+       var sendTask = this.cli.append(
+        gateway,
+        'bpmn:SendTask',
+        '150,0'
+      );
+      var sendTaskshape = this.cli.element(sendTask);
+
+      var boundary = this.cli.create('bpmn:BoundaryEvent',{
+        x: sendTaskshape.x ,
+        y: sendTaskshape.y + 70
+      }, sendTaskshape,true);
+
+      var boundaryShape=this.cli.element(boundary);
+      this.bpmnReplace.replaceElement(boundaryShape,{
+        type: "bpmn:BoundaryEvent",
+        eventDefinitionType: "bpmn:TimerEventDefinition"
+    });
+      var endEvent1 = this.cli.append(
+        sendTask,
+        'bpmn:EndEvent',
+        '150,0'
+      );
+      var sendTask2 = this.cli.append(
+        gateway,
+        'bpmn:SendTask',
+        '150,0'
+      );
+      var endEvent2 = this.cli.append(
+        sendTask2,
+        'bpmn:EndEvent',
+        '150,0'
+      );
+      var participantstart=  this.createNewParticipant(participantshape, rootElements);
+      var receiveTask = this.cli.append(
+        participantstart,
+        'bpmn:ReceiveTask',
+        '150,0'
+      );
+      var endEventmore = this.cli.append(
+        receiveTask,
+        'bpmn:EndEvent',
+        '150,0'
+      );
+      var participantstart2=  this.createNewParticipant(participantshape, rootElements);
+      var receiveTask2 = this.cli.append(
+        participantstart2,
+        'bpmn:ReceiveTask',
+        '150,0'
+      );
+      var endEventmore2 = this.cli.append(
+        receiveTask2,
+        'bpmn:EndEvent',
+        '150,0'
+      );
+      this.cli.connect(
+        sendTask,
+        receiveTask,
+        'bpmn:MessageFlow',
+        '150,0'
+      );
+      this.cli.connect(
+        sendTask2,
+        receiveTask2,
+        'bpmn:MessageFlow',
+        '150,0'
+      );*/
+     //   console.log(participantstart);
+      //  console.log(definitions);
+      //  console.log(rootElements);
+
+
+      
+
+
+
+
        }
     
 
-  createEvaluationProcess(collabo, startingChoreographyTask, participantref, participants, participantshape, rootElements, startingSituationalScope, sequenceFlows, subProcesses, fittingParticipantName) {
-    console.log("evaluation");
-    var evaluationSubprocess = this.cli.append(collabo.id, 'bpmn:SubProcess', '300,300');
+  continueSituation(collabo, startingChoreographyTask, participantref, participants, participantshape, rootElements, startingSituationalScope, sequenceFlows, subProcesses, fittingParticipantName) {
+    console.log("continueSituation");
+    var evaluationSubprocess = this.cli.append(collabo.id, 'bpmn:SubProcess', '150,0');
     this.bpmnReplace.replaceElement(this.cli.element(evaluationSubprocess), {
       type: "bpmn:SubProcess",
       isExpanded: true
@@ -76,7 +157,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       x: evaluationSubprocessShape.x,
       y: evaluationSubprocessShape.y
     }, evaluationSubprocessShape);
-    var end2 = this.cli.append(evaluationSubprocess, 'bpmn:EndEvent','300,-300');
+    var end2 = this.cli.append(evaluationSubprocess, 'bpmn:EndEvent');
     //create participants which have to be evaluated for their situation
     for (var i = 0; i < startingChoreographyTask["bpmn2:participantRef"].length; i++) {
       if (startingChoreographyTask["bpmn2:participantRef"].length > 2) {
@@ -85,24 +166,22 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       //all participants which are not the initiating participant
       if (startingChoreographyTask["bpmn2:participantRef"][i] != participantref) {
         var participantname = this.getParticipant(participants, startingChoreographyTask["bpmn2:participantRef"][i]);
-        var interactingParticipantStarEvent = this.createNewParticipant(this.lastparticipantshape, rootElements,startingChoreographyTask["bpmn2:participantRef"][i]);
+        var interactingParticipantStarEvent = this.createNewParticipant(participantshape, rootElements,startingChoreographyTask["bpmn2:participantRef"][i]);
         var interactingParticipantShape = this.cli.element(interactingParticipantStarEvent);
-        console.log(interactingParticipantShape.parent);
-        this.lastparticipantshape=interactingParticipantShape.parent;
         this.cli.setLabel(interactingParticipantShape.parent, participantname);
-        var requestSendTask = this.cli.append(subprocessStartEvent, 'bpmn:SendTask', '150,150');
+        var requestSendTask = this.cli.append(subprocessStartEvent, 'bpmn:SendTask', '150,0');
         this.cli.setLabel(requestSendTask, "Request availability");
         var requestReceiveTask = this.cli.append(interactingParticipantStarEvent, 'bpmn:ReceiveTask', '150,0');
         this.cli.setLabel(requestReceiveTask, "Receive availability request");
         this.cli.connect(requestSendTask, requestReceiveTask, 'bpmn:MessageFlow', '150,0');
         var responseSendTask = this.cli.append(requestReceiveTask, 'bpmn:SendTask', '150,0');
         this.cli.setLabel(responseSendTask, "Send availability");
-        var responseReceiveTask = this.cli.append(requestSendTask, 'bpmn:ReceiveTask', '150,-150');
+        var responseReceiveTask = this.cli.append(requestSendTask, 'bpmn:ReceiveTask', '150,0');
         this.cli.setLabel(responseReceiveTask, "Receive availability");
         this.cli.connect(responseSendTask, responseReceiveTask, 'bpmn:MessageFlow', '150,0');
-        var gateway = this.cli.append(responseReceiveTask, 'bpmn:ExclusiveGateway', '150,150');
+        var gateway = this.cli.append(responseReceiveTask, 'bpmn:ExclusiveGateway', '150,0');
         this.cli.connect(gateway, requestSendTask, 'bpmn:SequenceFlow', '150,0');
-        var interactSendTask = this.cli.append(gateway, 'bpmn:SendTask', '150,-150');
+        var interactSendTask = this.cli.append(gateway, 'bpmn:SendTask', '150,0');
         this.cli.setLabel(interactSendTask, "Execute interaction");
         var interactReceiveTask = this.cli.append(responseSendTask, 'bpmn:ReceiveTask', '150,0');
         this.cli.setLabel(interactReceiveTask, "Execute request");
@@ -113,7 +192,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     }
     //adaption path
     var boundary = this.cli.create('bpmn:BoundaryEvent', {
-      x: evaluationSubprocessShape.x+evaluationSubprocessShape.width,
+      x: evaluationSubprocessShape.x,
       y: evaluationSubprocessShape.y + 70
     }, evaluationSubprocessShape, true);
     var boundaryShape = this.cli.element(boundary);
@@ -121,80 +200,68 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       type: "bpmn:BoundaryEvent",
       eventDefinitionType: "bpmn:TimerEventDefinition"
     });
-    
     var adaptiondecision = this.cli.append(boundary, 'bpmn:ExclusiveGateway', '150,0');
     //find adaption situations
-  
-      this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision);
-
-    
+    var lastsit = this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision);
   }
 
-
-  
-
   findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision) {
-   
     var sitscopeoutgoingflows = startingSituationalScope["bpmn2:outgoing"];
-    if(typeof sitscopeoutgoingflows!=='undefined'){
-      for (var i = 0; i < sitscopeoutgoingflows.length; i++) {
-        for (var j = 0; j < sequenceFlows.length; j++) {
-          if (sitscopeoutgoingflows[i] == sequenceFlows[j].$.id) {
-            //console.log(sequenceFlows[j].$.targetRef);
-            if ((sequenceFlows[j].$.flowtype === "Adapt")||typeof sequenceFlows[j].$.flowtype === 'undefined') {
-              //console.log(sequenceFlows[j].$.flowtype);
-              var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
-              //console.log("Adapt");
-  
-              //console.log(sit);
-              var chortask = this.findStartingChoreographyTask(sit);
-              //console.log(chortask);
-              this.createAllParticipantsOfSitScope(chortask, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision, sit);
-  
-              if (typeof sit["bpmn2:outgoing"] !== 'undefined') {
-  
-                this.findAppendedSituationalScopes(sit,sequenceFlows,subProcesses,participants,fittingParticipantName,participantshape,rootElements,adaptiondecision);
-               //console.log("available stuff");
-              }
-              
+    for (var i = 0; i < sitscopeoutgoingflows.length; i++) {
+      for (var j = 0; j < sequenceFlows.length; j++) {
+        if (sitscopeoutgoingflows[i] == sequenceFlows[j].$.id) {
+          console.log(sequenceFlows[j].$.targetRef);
+          if (sequenceFlows[j].$.flowtype !== "Continue") {
+            //console.log(sequenceFlows[j].$.flowtype);
+            var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
+            console.log("Adapt");
+
+            console.log(sit);
+            var chortask = this.findStartingChoreographyTask(sit);
+            this.createAllParticipantsOfSitScope(chortask, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision, sit);
+
+            if (typeof sit["bpmn2:outgoing"] !== 'undefined') {
+
+              this.findAppendedSituationalScopes(sit,sequenceFlows,subProcesses,participants,fittingParticipantName,participantshape,rootElements,adaptiondecision);
+             //console.log("available stuff");
             }
             
-            else if(sequenceFlows[j].$.flowtype === "Continue"){
-              //console.log(sequenceFlows[j].$.flowtype);
-              var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
-              //console.log("Continue");
-  
-              //console.log(sit);
-              var chortask = this.findStartingChoreographyTask(sit);
-              //console.log(chortask);
-  
-              var collabo = this.cli.element(chortask.$.initiatingParticipantRef);
-              //console.log(collabo);
-              var partendevent;
-              for(var endEventIterator=0;endEventIterator<collabo.children.length;endEventIterator++){
-                if(collabo.children[endEventIterator].type=="bpmn:EndEvent"){
-                  partendevent=this.cli.element(collabo.children[endEventIterator].id);
-                }
-                //this.cli.setLabel(partendevent,"Evaluate")
-              }
-              //console.log(partendevent.incoming[0].businessObject.sourceRef.id);
-              var lastmessagetask=this.cli.element(partendevent.incoming[0].businessObject.sourceRef.id);
-              //console.log(lastmessagetask);
-              this.cli.removeShape(partendevent);
-              this.createEvaluationProcess(lastmessagetask, chortask, chortask.$.initiatingParticipantRef, participants, participantshape, rootElements, sit, sequenceFlows, subProcesses, fittingParticipantName);
+          }
+          else {
+            //console.log(sequenceFlows[j].$.flowtype);
+            var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
+            console.log("Continue");
 
-              //var partendevent= this.bpmnReplace.replaceElement(partendevent, {
-              //  type: "bpmn:Task"                
-              //});
-              
-  
-              //console.log(sequenceFlows[j].$.flowtype);
+            console.log(sit);
+            var chortask = this.findStartingChoreographyTask(sit);
+            console.log(chortask);
+
+            var collabo = this.cli.element(chortask.$.initiatingParticipantRef);
+            //console.log(collabo);
+            for(var endEventIterator=0;endEventIterator<collabo.children.length;endEventIterator++){
+              if(collabo.children[endEventIterator].type=="bpmn:EndEvent"){
+                //console.log(this.cli.element(collabo.children[endEventIterator].id));
+                var partendevent=this.cli.element(collabo.children[endEventIterator].id);
+                //console.log(partendevent.incoming[0].businessObject.sourceRef.id);
+                var lastmessagetask=this.cli.element(partendevent.incoming[0].businessObject.sourceRef.id);
+                //console.log(lastmessagetask);
+                this.cli.removeShape(partendevent);
+                this.continueSituation(lastmessagetask, chortask, chortask.$.initiatingParticipantRef, participants, participantshape, rootElements, sit, sequenceFlows, subProcesses, fittingParticipantName);
+
+                //var partendevent= this.bpmnReplace.replaceElement(partendevent, {
+                //  type: "bpmn:Task"                
+                //});
+              }
+              //this.cli.setLabel(partendevent,"Evaluate")
             }
+            
+
+            console.log(sequenceFlows[j].$.flowtype);
           }
         }
       }
     }
-
+    return sit;
   }
 
   createAllParticipantsOfSitScope(chortask, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision, situationscope) {
@@ -202,40 +269,21 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     var taskoutgoingsequenceflows=chortask["bpmn2:outgoing"];
     var situationsequenceflows=situationscope["bpmn2:sequenceFlow"];
     var situationendevents=situationscope["bpmn2:endEvent"];
-    var situationeventBasedGateway=situationscope["bpmn2:eventBasedGateway"];
-    var situationcomplexGateway=situationscope["bpmn2:complexGateway"];
-    var situationexclusiveGateway=situationscope["bpmn2:exclusiveGateway"];
-    var situationinclusiveGateway=situationscope["bpmn2:inclusiveGateway"];
-    var situationparallelGateway=situationscope["bpmn2:parallelGateway"];
-    var choreographytasks=situationscope["bpmn2:choreographyTask"];
-
-
     //console.log(chortask);
     //console.log(situationscope);
-    var taskpositioncounter=0;
-
-    if(typeof choreographytasks !== 'undefined'){
-      for(var chorincrement=0;chorincrement<choreographytasks.length;chorincrement++){
-        if(chortask.$.id==choreographytasks[chorincrement].$.id){
     for (var k = 0; k < taskparticipants.length; k++) {
       var taskparticipantname = this.getParticipant(participants, taskparticipants[k]);
-      //console.log(situationscope);
-      //console.log(chortask);
+      console.log(taskparticipantname);
 
-      //console.log(typeof this.elementRegistry.get(taskparticipants[k]) ==='undefined');
+      console.log(typeof this.elementRegistry.get(taskparticipants[k]) ==='undefined');
       if (taskparticipantname != fittingParticipantName) {
         if(typeof this.elementRegistry.get(taskparticipants[k]) ==='undefined'){
-          var newinteractingparticipant = this.createNewParticipant(this.lastparticipantshape, rootElements,taskparticipants[k]);
+          var newinteractingparticipant = this.createNewParticipant(participantshape, rootElements,taskparticipants[k]);
           var newinteractingParticipantShape = this.cli.element(newinteractingparticipant);
           //console.log(taskparticipants[k]);
           //console.log(newinteractingParticipantShape.parent);
           this.cli.setLabel(newinteractingParticipantShape.parent, taskparticipantname);
-          this.lastparticipantshape=newinteractingParticipantShape.parent;
-          var sendtaskposition_y=this.taskpositioncounter*100;
-          var sendtaskposition='150,'+sendtaskposition_y;
-          //console.log(sendtaskposition);
-          var adaptionmessagetask = this.cli.append(adaptiondecision, 'bpmn:SendTask', sendtaskposition);
-          this.taskpositioncounter++;
+          var adaptionmessagetask = this.cli.append(adaptiondecision, 'bpmn:SendTask', '150,0');
           var adaptionreceivemessagetask = this.cli.append(newinteractingparticipant, 'bpmn:ReceiveTask', '150,0');
           var interactionmessage = this.cli.connect(adaptionmessagetask, adaptionreceivemessagetask, 'bpmn:MessageFlow', '150,0');
           this.cli.setLabel(interactionmessage, chortask.$.name);
@@ -243,19 +291,14 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
           for(var m=0;m<taskoutgoingsequenceflows.length;m++){
             for(var l=0;l<situationsequenceflows.length;l++){
               if(taskoutgoingsequenceflows[m]== situationsequenceflows[l].$.id){
-
-
-
                 for(var n=0;n<situationendevents.length;n++){
                   if(situationsequenceflows[l].$.targetRef==situationendevents[n].$.id){
                     var endadaptionevent = this.cli.append(adaptionmessagetask, 'bpmn:EndEvent');
   
                   }else{
                     var followingchoreography=this.findChoreographyTask(situationscope,situationsequenceflows[l].$.targetRef)
-                    console.log(situationsequenceflows[l].$.targetRef);
                     //enable gateways and events
                     //console.log(followingchoreography);
-                    this.taskpositioncounter=0;
                     this.createAllParticipantsOfSitScope(followingchoreography,participants,fittingParticipantName,participantshape,rootElements,adaptionmessagetask,situationscope);
                   }
                 }
@@ -263,12 +306,13 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
             }
           }
         }
+        
+        
+
+
+
       }
     }
-        }
-      }
-   }
-
   }
 
   getParticipant(participants, participantref) {
@@ -289,16 +333,17 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     var outgoingsituationstart = situationstart["bpmn2:outgoing"][0];
     var fittingsituationsequenceflow;
     for (var i = 0; i < situationsequenceFlows.length; i++) {
-      // look the sequenceflow which belongs to the start event inside the situationalscope
+      // look for the entry with a matching `code` value
       if (situationsequenceFlows[i].$.id == outgoingsituationstart) {
-        console.log(situationsequenceFlows[i].$.targetRef);
         fittingsituationsequenceflow = situationsequenceFlows[i].$.targetRef;
+        // obj[i].name is the matched result
       }
     }
     for (var i = 0; i < situationchoreographytask.length; i++) {
-      // look for the choreography task belonging to the sequenceflow
+      // look for the entry with a matching `code` value
       if (situationchoreographytask[i].$.id == fittingsituationsequenceflow) {
         return situationchoreographytask[i];
+        // obj[i].name is the matched result
       }
     }
   }
@@ -319,16 +364,18 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     var outgoingstart = startEvent["bpmn2:outgoing"][0];
     var fittingsequenceflow;
     for (var i = 0; i < sequenceFlows.length; i++) {
-      // find the sequenceflow belonging to the start event
+      // look for the entry with a matching `code` value
       if (sequenceFlows[i].$.id == outgoingstart) {
         fittingsequenceflow = sequenceFlows[i].$.targetRef;
+        // obj[i].name is the matched result
       }
     }
 
     for (var i = 0; i < subProcesses.length; i++) {
-      // find the target situational scope
+      // look for the entry with a matching `code` value
       if (subProcesses[i].$.id == fittingsequenceflow) {
         return subProcesses[i];
+        // obj[i].name is the matched result
       }
     }
   }
@@ -348,8 +395,8 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
 
   createNewParticipant(participantshape, rootElements,participantid) {
     var start = this.cli.create('bpmn:Participant', {
-      x: participantshape.x + 200,
-      y: participantshape.y + participantshape.height+200
+      x: participantshape.x + 50,
+      y: participantshape.y + 150
     }, participantshape.parent);
     var participantshape2 = this.cli.element(start);
     //console.log(participantid);
