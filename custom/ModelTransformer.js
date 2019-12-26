@@ -176,7 +176,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     var adaptiondecision = this.cli.append(boundary, 'bpmn:ExclusiveGateway', '150,0');
     //find adaption situations
   
-      this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision);
+      this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
 
     
   }
@@ -208,7 +208,11 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       //console.log(maxref);
       //console.log(elementsofparticipant);
       //console.log(initiatingparticipant,participantkeys[i]);
+      console.log(startingpoint);
+      console.log(initiatingparticipant);
+      console.log(participantkeys[i]);
       if(initiatingparticipant===participantkeys[i]){
+        console.log("this");
         startingelement=startingpoint;
       }else{
         var test=this.elementRegistry.get(participantkeys[i]);
@@ -223,7 +227,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
         }else{
           
           startingelement=this.getLastElementOfParticipantBeforeEndEvent(participantkeys[i]);
-          //console.log("something went wrong");
+          console.log("something went wrong");
           //console.log(startingelement);
         }
       }
@@ -760,8 +764,8 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
               var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
               //console.log("Adapt");
               console.log(sit);
-
-              this.createAllParticipantsOfSitScope(participants, fittingParticipantName, participantshape, rootElements, adaptiondecision, sit);
+              this.executeChoreographyTaskTreeWalker(sit,participants,rootElements,fittingParticipantName,adaptiondecision);
+              //this.createAllParticipantsOfSitScope(participants, fittingParticipantName, participantshape, rootElements, adaptiondecision, sit);
   
               if (typeof sit["bpmn2:outgoing"] !== 'undefined') {
   
