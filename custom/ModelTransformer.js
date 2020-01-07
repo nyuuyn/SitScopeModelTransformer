@@ -137,18 +137,59 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     this.endeventmapping[participantref]=executionsubprocessend;
 
 
-      //continuepath = this.createExceptionPath(startingSituationalScope, evaluationgateway, evaluateavailability, evaluationSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+      console.log(startingSituationalScope);
+      var waitpathexists=false;
+      var runningcompensatepathexists=false;
 
+      var appendingsituationalscopes=startingSituationalScope['bpmn2:outgoing'];
+      if(typeof appendingsituationalscopes !== 'undefined'){
+        for(var sfs=0;sfs<appendingsituationalscopes.length;sfs++){
+          for(var allsfs=0;allsfs<sequenceFlows.length;allsfs++){
+            if(appendingsituationalscopes[sfs]===sequenceFlows[allsfs]['$']['id']){
+              if(sequenceFlows[allsfs]['$']['conditionType']!=='undefined'){
+                if(sequenceFlows[allsfs]['$']['conditionType']==="WaitCondition"){
+                  waitpathexists=true;
+                }else if(sequenceFlows[allsfs]['$']['conditionType']==="RunningCompensateCondition"){
+                  runningcompensatepathexists=true;
+                }
+              }
+            }
+          }
+        }
+      }
 
+      console.log(waitpathexists,runningcompensatepathexists);
+      if(waitpathexists){
+        var iswaitpath=true;
+        continuepath = this.createExceptionPath(startingSituationalScope, evaluationgateway, evaluateavailability, evaluationSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
 
-    
-      continuepath = this.createRunningCompensationPath(startingSituationalScope, executionSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+      }
+
+      if(runningcompensatepathexists){
+        var iswaitpath=false;
+      continuepath = this.createRunningCompensationPath(startingSituationalScope, executionSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
+
+      }
+        if(startingSituationalScope['$']['sitscope:entryCondition']==="Return"||startingSituationalScope['$']['sitscope:entryCondition']==="Abort"||startingSituationalScope['$']['sitscope:entryCondition']==="Retry"){
+          var iswaitpath=true;
+        continuepath = this.createExceptionPath(startingSituationalScope, evaluationgateway, evaluateavailability, evaluationSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
+        } else if(startingSituationalScope['$']['sitscope:runningCompensateCondition']==="Return"||startingSituationalScope['$']['sitscope:runningCompensateCondition']==="Abort"||startingSituationalScope['$']['sitscope:runningCompensateCondition']==="Retry"){
+          var iswaitpath=false;
+      continuepath = this.createRunningCompensationPath(startingSituationalScope, executionSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
+        }else{
+          var iswaitpath=false;
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
+        }
+        
+
+      
+
 
 
     
   }
 
-  createExceptionPath(startingSituationalScope, evaluationgateway, evaluateavailability, evaluationSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess) {
+  createExceptionPath(startingSituationalScope, evaluationgateway, evaluateavailability, evaluationSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath) {
     if (startingSituationalScope['$']['sitscope:waitforentry'] === "true") {
       this.cli.connect(evaluationgateway, evaluateavailability, 'bpmn:SequenceFlow', '150,0');
       //adaption path
@@ -190,7 +231,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
         continuepath = adaptiondecision;
         //find adaption situations
         //console.log(continuepath);
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Return") {
         var previousfittingsituation = this.getvalidpreviousSituation(startingSituationalScope, sequenceFlows, subProcesses);
@@ -214,20 +255,20 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
           eventDefinitionType: "bpmn:MessageEventDefinition"
         });
         this.cli.connect(messageend, messageStartEvent, 'bpmn:MessageFlow');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Continue") {
         var firstel = evaluationSubprocessShape.outgoing[0].businessObject.targetRef.id;
         this.cli.connect(boundary, firstel, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Retry") {
         this.cli.connect(boundary, evaluationSubprocess, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Abort") {
         var endabort = this.cli.append(boundary, 'bpmn:EndEvent');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
     }
     else if (startingSituationalScope['$']['sitscope:waitforentry'] === "false") {
@@ -297,7 +338,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       if (startingSituationalScope['$']['sitscope:entryCondition'] === "Adapt") {
         var adaptiondecision = this.cli.append(boundary, 'bpmn:ExclusiveGateway', '150,0');
         continuepath = adaptiondecision;
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
         //find adaption situations
         //console.log(continuepath);        
       }
@@ -323,20 +364,20 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
           eventDefinitionType: "bpmn:MessageEventDefinition"
         });
         this.cli.connect(messageend, messageStartEvent, 'bpmn:MessageFlow');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Continue") {
         var firstel = evaluationSubprocessShape.outgoing[0].businessObject.targetRef;
         this.cli.connect(boundary, firstel, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Retry") {
         this.cli.connect(boundary, evaluationSubprocess, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:entryCondition'] === "Abort") {
         var endabort = this.cli.append(boundary, 'bpmn:EndEvent');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
     }
     else {
@@ -346,7 +387,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     return continuepath;
   }
 
-  createRunningCompensationPath(startingSituationalScope, executionSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess) {
+  createRunningCompensationPath(startingSituationalScope, executionSubprocessShape, continuepath, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath) {
     var participantel=this.cli.element(participantref);
 
     var eventsubprocess = this.cli.create('bpmn:SubProcess', {
@@ -441,7 +482,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
         continuepath = adaptiondecision;
         //find adaption situations
         //console.log(continuepath);
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Return") {
         var previousfittingsituation = this.getvalidpreviousSituation(startingSituationalScope, sequenceFlows, subProcesses);
@@ -465,20 +506,20 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
           eventDefinitionType: "bpmn:MessageEventDefinition"
         });
         this.cli.connect(messageend, messageStartEvent, 'bpmn:MessageFlow');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Continue") {
         var firstel = executionSubprocessShape.outgoing[0].businessObject.targetRef.id;
         this.cli.connect(inter, firstel, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Retry") {
         this.cli.connect(inter, evaluationSubprocess, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Abort") {
         var endabort = this.cli.append(inter, 'bpmn:EndEvent');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
     }
     else if (startingSituationalScope['$']['sitscope:waitforcompensate'] === "false") {
@@ -488,7 +529,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
       if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Adapt") {
         var adaptiondecision = this.cli.append(inter, 'bpmn:ExclusiveGateway', '150,0');
         continuepath = adaptiondecision;
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
         //find adaption situations
         //console.log(continuepath);        
       }
@@ -514,20 +555,20 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
           eventDefinitionType: "bpmn:MessageEventDefinition"
         });
         this.cli.connect(messageend, messageStartEvent, 'bpmn:MessageFlow');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Continue") {
         var firstel = executionSubprocessShape.outgoing[0].businessObject.targetRef;
         this.cli.connect(inter, firstel, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, adaptiondecision,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Retry") {
         this.cli.connect(inter, evaluationSubprocess, 'bpmn:SequenceFlow', '150,0');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
       else if (startingSituationalScope['$']['sitscope:runningCompensateCondition'] === "Abort") {
         var endabort = this.cli.append(inter, 'bpmn:EndEvent');
-        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess);
+        this.findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, participantref, participantshape, rootElements, evaluationSubprocess,iswaitpath);
       }
     }
     else {
@@ -1356,8 +1397,15 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
     }
   }
 
-  findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision) {
+  findAppendedSituationalScopes(startingSituationalScope, sequenceFlows, subProcesses, participants, fittingParticipantName, participantshape, rootElements, adaptiondecision,iswaitpath) {
    //console.log(startingSituationalScope);
+   console.log(iswaitpath);
+   var waitorrunningpath="";
+   if(iswaitpath){
+     waitorrunningpath="WaitCondition";
+   }else{
+     waitorrunningpath="RunningCompensateCondition";
+   }
    var endabortmessagelist=[];
    var eventgatewaymessagelist=[];
     var sitscopeoutgoingflows = startingSituationalScope["bpmn2:outgoing"];
@@ -1389,10 +1437,14 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
           if (sitscopeoutgoingflows[i] == sequenceFlows[j].$.id) {
             //console.log(sequenceFlows[j].$.targetRef);
             if ((sequenceFlows[j].$.flowtype === "Adapt")||typeof sequenceFlows[j].$.flowtype === 'undefined') {
+              if(sequenceFlows[j].$.conditionType===waitorrunningpath){
+
+             
               //console.log(sequenceFlows[j].$.flowtype);
               var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
               //console.log("Adapt");
-              //console.log(sit);
+              console.log(sit);
+              console.log(adaptiondecision);
               var setglobalendevent=false;
               var setadaptendevent=true;
               if(executeInterruptingProcedure===true){
@@ -1402,12 +1454,13 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
                 eventgatewaymessagelist.push(eventgateway[0]);
                 endabortmessagelist.push(eventgateway[1]);
               }else{
-                var setadaptflowelement=false;
+                var setadaptflowelement=true;
                 this.executeChoreographyTaskTreeWalker(sit,participants,rootElements,fittingParticipantName,adaptiondecision,undefined,setglobalendevent,setadaptendevent,setadaptflowelement,executeInterruptingProcedure);
               }
 
               //this.createAllParticipantsOfSitScope(participants, fittingParticipantName, participantshape, rootElements, adaptiondecision, sit);
               var fittingsequenceflow;
+              console.log(this.adaptflowmapping);
               for (const [key, value] of Object.entries(this.adaptflowmapping)) {
                 //console.log(key,value);
 
@@ -1434,6 +1487,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
               var newcondition= this.moddle.create('bpmn:FormalExpression',{
                 body: conditionstring
               });
+              console.log(fittingsequenceflow);
               this.modeling.updateProperties(fittingsequenceflow,{
                 conditionExpression:newcondition
               });
@@ -1441,25 +1495,24 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
               //console.log(conditionstring);
               if (typeof sit["bpmn2:outgoing"] !== 'undefined') {
                 
-                this.findAppendedSituationalScopes(sit,sequenceFlows,subProcesses,participants,fittingParticipantName,participantshape,rootElements,adaptiondecision);
+                this.findAppendedSituationalScopes(sit,sequenceFlows,subProcesses,participants,fittingParticipantName,participantshape,rootElements,adaptiondecision,iswaitpath);
                //console.log("available stuff");
               }
-              
+            }
             }
             
             else if(sequenceFlows[j].$.flowtype === "Continue"){
               //console.log(sequenceFlows[j].$.flowtype);
               var sit = this.findSituationalScope(subProcesses, sequenceFlows[j].$.targetRef);
-              //console.log("Continue");
               var evaluationprocess=sit['bpmn2:subProcess'][0];
 
               var chortask = this.findStartingChoreographyTask(evaluationprocess);
               //console.log(chortask);
               if(typeof chortask==='undefined'){
-                var sitstartevent= sit['bpmn2:startEvent'][0]['bpmn2:outgoing'][0];
+                var sitstartevent= evaluationprocess['bpmn2:startEvent'][0]['bpmn2:outgoing'][0];
                 
  
-                chortask = this.checkforchortask(sit, sitstartevent);
+                chortask = this.checkforchortask(evaluationprocess, sitstartevent);
               }
 
               /*
@@ -1574,6 +1627,7 @@ constructor(bpmnjs,modeling,config,eventBus, bpmnRenderer, textRenderer,cli,bpmn
         targetelement = situationsequenceFlows[seq].$.targetRef;
       }
     }
+    console.log(sit,sequenceflow,targetelement);
     //console.log(targetelement);
     var currentgateway = this.getgateway(sit, targetelement);
     
