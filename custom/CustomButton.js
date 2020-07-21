@@ -47,7 +47,7 @@ export default class CustomButton {
       // list of selected files
       var all_files = this.files;
       if (all_files.length == 0) {
-        alert('deine mudder');
+        alert('no files available');
         return;
       }
 
